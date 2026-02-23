@@ -8,15 +8,15 @@ import numpy as np
 class BoidsParams:
     """Container for boids interaction and integration parameters."""
 
-    alignment_weight: float = 1.0
-    cohesion_weight: float = 10.6
+    alignment_weight: float = 0.9
+    cohesion_weight: float = 1.5
     separation_weight: float = 1.35
     wall_weight: float = 1.25
     noise_weight: float = 0.1
-    repulsive_obstacle_weight: float = 100.0
-    attractive_obstacle_weight: float = 1.0
-    max_force: float = 5.0
-    max_speed: float = 200.0
+    repulsive_obstacle_weight: float = 300.0
+    attractive_obstacle_weight: float = 700.0
+    max_force: float = 50.0
+    max_speed: float = 250.0
     perception_radius: float = 38.0
     separation_radius: float = 16.0
     wall_margin: float = 45.0

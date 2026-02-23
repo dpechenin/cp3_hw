@@ -106,6 +106,6 @@ python main.py \
 ## Записи примеров
 
 1. 1000 агентов, 3600 кадров, 60 кадров в секунду, остальные настройки по умолчанию:   
-  https://drive.google.com/file/d/17sOgW7NwWZ11on3T_qJyWSUFQPgBzVgQ/view?usp=sharing
+  https://drive.google.com/file/d/1mb_sYxTcbp6RKWQ_KrFOWsCWSx0Mim2k/view?usp=sharing
 2. 5000 агентов, 3600 кадров, 60 кадров в секунду, остальные настройки по умолчанию:  
-  https://drive.google.com/file/d/1vEcpuBbik_BEuP6vU7F8tpKo0QOUFSLk/view?usp=sharing
+  https://drive.google.com/file/d/1j7rc59iekqX4zAOQNFfVx7ILJODT-ZV5/view?usp=sharing

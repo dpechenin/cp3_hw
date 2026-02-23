@@ -62,7 +62,7 @@ def run_visualization(
         size=(width_px, height_px),
         bgcolor="#0A1325",
         show=True,
-        title="Boids HW4 (Numba + VisPy)",
+        title="Boids HW4",
     )
     view = canvas.central_widget.add_view()
     view.camera = scene.cameras.PanZoomCamera(aspect=1.0)
