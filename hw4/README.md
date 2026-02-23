@@ -22,6 +22,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Также требуется установить ffmpeg и добавить его в PATH.  
+Например, на MacOS можно через Brew:
+```bash
+brew install ffmpeg
+```
+
 Для macOS рекомендуется backend `pyqt6`.
 Для Windows рекомендуется backend `pyglet`.
 

@@ -10,7 +10,7 @@ from boids_runtime import run_visualization
 
 def parse_args() -> argparse.Namespace:
     """Build CLI parser and parse arguments."""
-    parser = argparse.ArgumentParser(description="Boids HW4 (Numba + VisPy + obstacles)")
+    parser = argparse.ArgumentParser(description="Boids HW4")
     parser.add_argument("--n", type=int, default=1000, help="Number of boids")
     parser.add_argument("--width", type=int, default=1280, help="Window width in pixels")
     parser.add_argument("--height", type=int, default=720, help="Window height in pixels")
@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=0, help="Limit number of rendered steps (0 means infinite)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--record", type=Path, default=None, help="Optional output MP4 path")
-    parser.add_argument("--backend", type=str, default=None, help="VisPy backend (pyqt6/pyqt5/pyglet/...)")
+    parser.add_argument("--backend", type=str, default=None, help="VisPy backend (pyqt6/pyqt5/pyglet)")
     return parser.parse_args()
 
 

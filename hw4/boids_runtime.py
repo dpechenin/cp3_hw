@@ -87,14 +87,23 @@ def run_visualization(
             parent=view.scene,
         )
 
-    hud = scene.Text(
+    top_hud = scene.Text(
         "",
         parent=canvas.scene,
         color="white",
-        font_size=10,
+        font_size=8,
         anchor_x="left",
         anchor_y="top",
-        pos=(10, 8),
+        pos=(10, 20),
+    )
+    bottom_hud = scene.Text(
+        "",
+        parent=canvas.scene,
+        color="white",
+        font_size=8,
+        anchor_x="left",
+        anchor_y="bottom",
+        pos=(10, height_px - 20),
     )
 
     recorder = FFmpegRecorder(output_mp4, width_px, height_px, fps) if output_mp4 else None
@@ -110,14 +119,17 @@ def run_visualization(
 
     def update_hud() -> None:
         """Refresh overlay text with FPS and current simulation parameters."""
-        hud.text = (
-            f"N={simulation.n_agents} | fps={fps_value:6.2f}\n"
-            f"a={params.alignment_weight:.2f}, c={params.cohesion_weight:.2f}, "
-            f"s={params.separation_weight:.2f}, w={params.wall_weight:.2f}, "
-            f"n={params.noise_weight:.2f}\n"
-            f"obs_rep={params.repulsive_obstacle_weight:.2f}, "
-            f"obs_att={params.attractive_obstacle_weight:.2f}, "
-            f"R={params.perception_radius:.1f}, Rsep={params.separation_radius:.1f}"
+        top_hud.text = (
+            f"N={simulation.n_agents} | fps={fps_value:6.2f} | "
+            f"alignment={params.alignment_weight:.2f} | cohesion={params.cohesion_weight:.2f} | "
+            f"separation={params.separation_weight:.2f} | wall={params.wall_weight:.2f} | "
+            f"noise={params.noise_weight:.2f}"
+        )
+        bottom_hud.text = (
+            f"repulsive obstacle weight={params.repulsive_obstacle_weight:.2f} | "
+            f"attractive obstacle weight={params.attractive_obstacle_weight:.2f} | "
+            f"radii: perception radius={params.perception_radius:.1f} |  separation radius={params.separation_radius:.1f} | "
+            f"recording={'on' if recorder is not None else 'off'} | frames={frame_count}"
         )
 
     def on_timer(_event) -> None:
