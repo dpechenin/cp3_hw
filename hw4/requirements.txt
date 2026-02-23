@@ -1,0 +1,6 @@
+numpy>=1.24
+numba>=0.58
+vispy>=0.14
+PyQt6>=6.6; platform_system == "Darwin"
+pyglet>=2.0; platform_system == "Windows"
+ffmpeg-python>=0.2.0
