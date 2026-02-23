@@ -106,7 +106,8 @@ def run_visualization(
         pos=(10, height_px - 20),
     )
 
-    recorder = FFmpegRecorder(output_mp4, width_px, height_px, fps) if output_mp4 else None
+    fb_w, fb_h = canvas.physical_size
+    recorder = FFmpegRecorder(output_mp4, int(fb_w), int(fb_h), fps) if output_mp4 else None
     frame_limit = max_frames if max_frames is not None else -1
     frame_count = 0
     fps_value = 0.0
@@ -128,7 +129,7 @@ def run_visualization(
         bottom_hud.text = (
             f"repulsive obstacle weight={params.repulsive_obstacle_weight:.2f} | "
             f"attractive obstacle weight={params.attractive_obstacle_weight:.2f} | "
-            f"radii: perception radius={params.perception_radius:.1f} |  separation radius={params.separation_radius:.1f} | "
+            f"perception radius={params.perception_radius:.1f} |  separation radius={params.separation_radius:.1f} | "
             f"recording={'on' if recorder is not None else 'off'} | frames={frame_count}"
         )
 
