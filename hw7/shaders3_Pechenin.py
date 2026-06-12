@@ -57,7 +57,6 @@
 - раздельные цветные слои и их смешивание дают цветное существо (модификация 5)
 """
 
-from typing import Optional, Tuple
 import math
 import time
 
@@ -100,6 +99,12 @@ def safe_norm(v: tm.vec2, fallback: tm.vec2) -> tm.vec2:
     if length > 1e-6:
         result = v / length
     return result
+
+
+@ti.func
+def perp(v: tm.vec2) -> tm.vec2:
+    """Повернуть вектор на 90° против часовой стрелки."""
+    return tm.vec2(-v.y, v.x)
 
 
 @ti.func
@@ -165,7 +170,7 @@ class FishShader:
       5. Цветное отображение существа отдельными слоями со смешиванием.
     """
 
-    def __init__(self, title: str, res: Optional[Tuple[int, int]] = None, gamma: float = 2.2) -> None:
+    def __init__(self, title: str, res: tuple[int, int] | None = None, gamma: float = 2.2) -> None:
         """
         Задать параметры окна, выделить поля состояния и заполнить начальную позу.
 
@@ -174,7 +179,7 @@ class FishShader:
         :param gamma: показатель гамма-коррекции (0 - выключить)
         """
         self.title = title
-        self.res = res if res is not None else (1000, 562)
+        self.res = res if res is not None else (800, 450)
         self.resf = tm.vec2(float(self.res[0]), float(self.res[1]))
         self.aspect = float(self.res[0]) / float(self.res[1])
         self.gamma = gamma
@@ -196,6 +201,7 @@ class FishShader:
         self.follow_stiffness = 45.0 # жесткость пружины головы (модификация 1б)
         self.follow_damping = 16.0 # затухание скорости головы
         self.max_turn = 0.45 # макс. угол излома на узле, рад (модификация 2)
+        self.scene_margin = self.body_r # отступ равен радиусу тела — стены вплотную к краям окна
 
         # Параметры волны плавания
         self.wave_amp = 0.024
@@ -213,6 +219,7 @@ class FishShader:
         self.tail_wid = 0.052
         self.tail_spread = 0.55 # развод лепестков хвоста
         self.tail_swing = 0.22
+        self.tail_w = 6.0 # частота взмаха хвоста
 
         # Параметры глаз
         self.eye_fwd = 0.030
@@ -238,7 +245,8 @@ class FishShader:
         """
         Первый шаг кадра: пересчитать положение узлов позвоночника.
 
-        Этапы: инерционное движение головы к курсору (модификация 1б),
+        Этапы: инерционное движение головы к курсору (модификация 1б), цель при
+        этом ограничена видимой областью, чтобы рыба не выходила за край кадра;
         выравнивание длин сегментов (нерастяжимость), ограничение минимального
         угла между сегментами (модификация 2) и расчет отображаемых узлов с
         бегущей волной плавания.
@@ -246,8 +254,13 @@ class FishShader:
         :param t: время от запуска, секунды
         :param cursor: позиция курсора в нормализованных координатах [0, 1] x [0, 1]
         """
-        # Цель в координатах сцены (центр экрана - начало координат)
+        # Цель в координатах сцены (центр экрана - начало координат). Цель зажата
+        # в прямоугольник чуть меньше окна и рыба остается в кадре вся.
+        lim_x = 0.5 * self.aspect - self.scene_margin
+        lim_y = 0.5 - self.scene_margin
         target = tm.vec2((cursor.x - 0.5) * self.aspect, cursor.y - 0.5)
+        target.x = tm.clamp(target.x, -lim_x, lim_x)
+        target.y = tm.clamp(target.y, -lim_y, lim_y)
 
         # Голова как затухающая пружина: ускорение зависит от расстояния до цели
         head = self.joints[0]
@@ -255,6 +268,8 @@ class FishShader:
         acc = (target - head) * self.follow_stiffness - v * self.follow_damping
         v = v + acc * self.dt
         head = head + v * self.dt
+        head.x = tm.clamp(head.x, -lim_x, lim_x)
+        head.y = tm.clamp(head.y, -lim_y, lim_y)
         self.head_vel[None] = v
         self.joints[0] = head
 
@@ -287,11 +302,11 @@ class FishShader:
             prev_i = max(i - 1, 0)
             next_i = min(i + 1, self.N - 1)
             tangent = safe_norm(self.joints[next_i] - self.joints[prev_i], tm.vec2(1.0, 0.0))
-            perp = tm.vec2(-tangent.y, tangent.x)
+            perp_vec = perp(tangent)
             s = i / (self.N - 1)
             amp = self.wave_amp * ti.pow(s, 1.4)
             phase = self.wave_k * s - self.wave_w * t
-            self.disp[i] = self.joints[i] + perp * amp * ti.sin(phase)
+            self.disp[i] = self.joints[i] + perp_vec * amp * ti.sin(phase)
 
 
     @ti.func
@@ -325,7 +340,7 @@ class FishShader:
         local = rot(-angle) @ (p - center)
         local.x /= length * 0.5
         local.y /= width * 0.5
-        d = (local.norm() - 1.0) * min(length, width) * 0.5
+        d = sd_circle(local, 1.0) * min(length, width) * 0.5
         return alpha_from_sdf(d, aa)
 
     @ti.func
@@ -347,12 +362,12 @@ class FishShader:
 
         # Направления на ключевых узлах
         head = self.disp[0]
-        head_dir = safe_norm(self.disp[0] - self.disp[1], tm.vec2(-1.0, 0.0))
+        head_dir = safe_norm(head - self.disp[1], tm.vec2(-1.0, 0.0))
 
         # Слой 1: хвостовой плавник (два лепестка) - рисуем первым, тело его перекроет
         tail = self.disp[self.N - 1]
-        tail_dir = safe_norm(self.disp[self.N - 1] - self.disp[self.N - 2], tm.vec2(1.0, 0.0))
-        tail_osc = self.tail_swing * ti.sin(t * self.fin_w + 0.6)
+        tail_dir = safe_norm(tail - self.disp[self.N - 2], tm.vec2(1.0, 0.0))
+        tail_osc = self.tail_swing * ti.sin(t * self.tail_w + 0.6)
         up_dir = rot(self.tail_spread + tail_osc) @ tail_dir
         dn_dir = rot(-self.tail_spread + tail_osc) @ tail_dir
         tail_a = self.fin_alpha(p, tail, up_dir, self.tail_len, self.tail_wid, aa)
@@ -363,8 +378,7 @@ class FishShader:
         # Слой 2: грудные плавники (пара конечностей, модификация 4)
         af = self.fin_joint
         axis = safe_norm(self.disp[af - 1] - self.disp[af + 1], tm.vec2(-1.0, 0.0))
-        perp = tm.vec2(-axis.y, axis.x)
-        back = -axis
+        perp_af = perp(axis)
         # кривизна позвоночника в точке крепления
         d1 = safe_norm(self.disp[af] - self.disp[af - 1], tm.vec2(1.0, 0.0))
         d2 = safe_norm(self.disp[af + 1] - self.disp[af], tm.vec2(1.0, 0.0))
@@ -372,10 +386,10 @@ class FishShader:
         flap = self.fin_swing * ti.sin(t * self.fin_w) + self.fin_curv_gain * curv
         fin_color = tm.vec3(0.98, 0.62, 0.26)
         for side in ti.static(range(2)):
-            sgn = 1.0 if side == 0 else -1.0
-            base_dir = safe_norm(back * 0.5 + perp * sgn, perp * sgn)
+            sgn = 1.0 - 2.0 * side
+            base_dir = safe_norm(-axis * 0.5 + perp_af * sgn, perp_af * sgn)
             fin_dir = rot(sgn * flap) @ base_dir
-            anchor = self.disp[af] + perp * sgn * (self.radii[af] * 0.5)
+            anchor = self.disp[af] + perp_af * sgn * (self.radii[af] * 0.5)
             fa = self.fin_alpha(p, anchor, fin_dir, self.fin_len, self.fin_wid, aa)
             color = blend(color, fin_color, fa * 0.85)
 
@@ -387,9 +401,9 @@ class FishShader:
         color = blend(color, body_color, body_a)
 
         # Слой 4: глаза (пара) с зрачком и бликом
-        eye_perp = tm.vec2(-head_dir.y, head_dir.x)
+        eye_perp = perp(head_dir)
         for side in ti.static(range(2)):
-            sgn = 1.0 if side == 0 else -1.0
+            sgn = 1.0 - 2.0 * side
             eye_c = head + head_dir * self.eye_fwd + eye_perp * sgn * self.eye_side
             white_a = alpha_from_sdf(sd_circle(p - eye_c, self.eye_r), aa)
             color = blend(color, tm.vec3(0.96, 0.96, 0.94), white_a)
@@ -439,11 +453,11 @@ class FishShader:
 def main() -> None:
     """Инициализировать Taichi и запустить шейдер рыбы."""
     try:
-        ti.init(arch=ti.gpu, offline_cache=False)
+        ti.init(arch=ti.gpu)
     except Exception:
-        ti.init(arch=ti.cpu, offline_cache=False)
+        ti.init(arch=ti.cpu)
 
-    shader = FishShader(title="shaders3_Pechenin", res=(1000, 562), gamma=2.2)
+    shader = FishShader(title="shaders3_Pechenin", res=(1200, 700), gamma=2.2)
     shader.main_loop()
 
 
